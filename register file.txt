@@ -1,0 +1,34 @@
+ module registerfile #(parameter xlen = 32) (
+    input clk,
+    input reset_n,
+    input wire [$clog2(32)-1:0] src1_addr, // Source 1 address
+    input wire [$clog2(32)-1:0] src2_addr, // Source 2 address
+    input wire [$clog2(32)-1:0] dest_addr, // Destination address
+    output wire [xlen-1:0] operand_a, // Output for operand A
+    output wire [xlen-1:0] operand_b, // Output for operand B
+    input wire [xlen-1:0] write_data, // Data to write to register
+    input wire wr_en // Write enable signal
+);
+
+    reg [xlen-1:0] reg_file[31:0]; // Register file
+
+    // Read logic
+    assign operand_a = (src1_addr == 0) ? 32'b0 : reg_file[src1_addr];
+    assign operand_b = (src2_addr == 0) ? 32'b0 : reg_file[src2_addr];
+
+    // Write logic
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n) begin
+            // Reset logic if needed
+            integer i;
+            for (i = 0; i < 32; i = i + 1) begin
+                reg_file[i] <= 32'b0;
+            end
+        end else if (wr_en && dest_addr != 0) begin
+            reg_file[dest_addr] <= write_data; // Write data to register
+        end
+    end
+endmodule
+
+  
+  

@@ -1,0 +1,153 @@
+module decode_unit #(parameter xlen = 32) (
+    input clk,
+    input wire reset_n,                  // Active low reset
+    input wire [xlen-1:0] current_instruction, // Instruction from Fetch unit
+    input wire [xlen-1:0] current_pc,    // Program counter from Fetch unit
+
+    output reg [3:0] operation,           // ALU operation
+    output reg [$clog2(xlen)-1:0] src1_addr, // Source 1 address for register file
+    output reg [$clog2(xlen)-1:0] src2_addr, // Source 2 address for register file
+    output reg [$clog2(xlen)-1:0] dest_addr, // Destination address for register file
+    output reg [xlen-1:0] imm,            // Immediate value
+    output reg use_imm,                   // Indicates if immediate is used
+    output reg is_load_store               // Indicates load/store operation
+);
+  typedef enum logic [6:0] {
+    RTYPE=7'b011011,    // 2'b00
+    ITYPE=7'b0010011,    // 2'b01
+    ITYPE_LOAD= 7'b0000011,
+  STYPE=7'b0100011,
+    JTYPE=7'b1101111,
+  BTYPE= 7'b1100011
+} instruction_type ;
+
+  typedef enum logic [4:0] {
+   NEQ,
+LT, 
+GE,
+LTU,
+GEU,
+ADD,
+XOR,
+OR,
+AND,
+SLL, 
+SRA,   
+SRL
+  } op;
+    // Define opcodes and funct3/funct7 values here based on RISC-V specifications
+    wire [6:0] opcode;
+    wire [2:0] funct3;
+    wire [6:0] funct7;
+
+    assign opcode = current_instruction[6:0];
+    assign funct3 = current_instruction[14:12];
+    assign funct7 = current_instruction[31:25];
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n) begin
+            // Reset all outputs
+            operation <= 4'b0000;
+            src1_addr <= 5'b0;
+            src2_addr <= 5'b0;
+            dest_addr <= 5'b0;
+            imm <= 32'b0;
+            use_imm <= 1'b0;
+            is_load_store <= 1'b0;
+        end else begin
+            // Decode the instruction based on opcode and funct3/funct7
+            case (opcode)
+                RTYPE: begin // R-type instructions
+                    // Source and destination register addresses
+                    src1_addr <= current_instruction[19:15];
+                    src2_addr <= current_instruction[24:20];
+                    dest_addr <= current_instruction[11:7];
+
+                    // Default immediate and flags
+                    imm <= 32'b0;
+                    use_imm <= 1'b0;
+                    is_load_store <= 1'b0;
+
+                    case (funct3)
+                        3'b000: begin // ADD
+                          operation <= (funct7 == 7'b0000000) ? 4'b0010 : ADD; // ADD
+                        end
+                        3'b100: begin // XOR
+                            operation <= XOR; // XOR
+                        end
+                        3'b110: begin // OR
+                            operation <=OR; // OR
+                        end
+                        3'b111: begin // AND
+                            operation <= AND; // AND
+                        end
+                        3'b001: begin // SLL
+                            operation <= SLL; // SLL
+                        end
+                        3'b101: begin // SRA or SRL
+                          operation <= (funct7 == 7'b0000000) ? SRA : SLL; // SRA or SRL
+                        end
+                        default: operation <= 4'b0000; // No operation
+                    endcase
+                end
+
+               ITYPE: begin // I-type ALU
+                imm = {{20{current_instruction[31]}}, current_instruction[31:20]}; // Sign-extended immediate
+            end
+                ITYPE_LOAD: begin // Load instructions (I-type)
+                    src1_addr <= current_instruction[19:15];
+                    dest_addr <= current_instruction[11:7];
+                    imm <= {{20{current_instruction[31]}}, current_instruction[31:20]}; // Sign-extend immediate
+                    use_imm <= 1'b1;
+                    is_load_store <= 1'b1;
+                    operation <= 4'b1000; // LOAD
+                end
+               STYPE: begin // Store instructions (S-type)
+                    src1_addr <= current_instruction[19:15]; // Base address
+                    src2_addr <= current_instruction[24:20]; // Data to store
+                    imm <= {{20{current_instruction[31]}}, current_instruction[31:25], current_instruction[11:7]}; // Sign-extend immediate
+                    use_imm <= 1'b1;
+                    is_load_store <= 1'b1;
+                    operation <= 4'b1001; // STORE
+                end
+                // Additional opcodes for comparison and branch instructions
+               BTYPE: begin // B-type instructions
+                    src1_addr <= current_instruction[19:15];
+                    src2_addr <= current_instruction[24:20];
+                    imm <= {{20{current_instruction[31]}}, current_instruction[7], current_instruction[30:25], current_instruction[11:8], 1'b0}; // Branch offset
+                    use_imm <= 1'b1;
+                    is_load_store <= 1'b0;
+
+                    case (funct3)
+                        3'b000: operation <= 4'b1010; // BEQ
+                        3'b001: operation <= 4'b1011; // BNE
+                        3'b100: operation <= 4'b1100; // BLT
+                        3'b101: operation <= 4'b1101; // BGE
+                        3'b110: operation <= 4'b1110; // BLTU
+                        3'b111: operation <= 4'b1111; // BGEU
+                        default: operation <= 4'b0000; // No operation
+                    endcase
+                end
+                default: begin
+                    // Handle unrecognized opcode
+                    operation <= 4'b0000;
+                    src1_addr <= 5'b0;
+                    src2_addr <= 5'b0;
+                    dest_addr <= 5'b0;
+                    imm <= 32'b0;
+                    use_imm <= 1'b0;
+                    is_load_store <= 1'b0;
+                end
+            endcase
+        end
+    end
+
+endmodule
+
+
+
+
+
+
+
+

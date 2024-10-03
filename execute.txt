@@ -1,0 +1,103 @@
+// Code your design here
+module execution_unit (
+    input clk,                  // Clock
+    input wire reset_n,         // Active low; synchronous
+
+    input wire [3:0] operation,  // Received from decoder
+    input wire [31:0] imm,       // Received from decoder (assuming xlen=32)
+    input wire use_imm,          // Received from decoder
+    input wire [31:0] operand_a, // rs1; Received from register file
+    input wire [31:0] operand_b, // rs2; Received from register file
+
+    output reg branch_taken,      // Sent to the fetch
+    output reg [31:0] result,     // Sent to the memory unit and writeback
+    output reg [31:0] effective_addr // Effective address for memory operations
+);
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n) begin
+            branch_taken <= 0;
+            result <= 0;
+            effective_addr <= 0; // Initialize effective address
+        end else begin
+            case (operation)
+                4'b0000: begin // ADD
+                    result <= operand_a + operand_b;
+                    branch_taken <= 0;
+                end
+                4'b0001: begin // SUB
+                    result <= operand_a - operand_b;
+                    branch_taken <= 0;
+                end
+                4'b0010: begin // AND
+                    result <= operand_a & operand_b; // Bitwise AND
+                    branch_taken <= 0;
+                end
+                4'b0011: begin // OR
+                    result <= operand_a | operand_b; // Bitwise OR
+                    branch_taken <= 0;
+                end
+                4'b0100: begin // XOR
+                    result <= operand_a ^ operand_b;
+                    branch_taken <= 0;
+                end
+                4'b0101: begin // SLT (Set Less Than)
+                    result <= (operand_a < operand_b) ? 1 : 0;
+                    branch_taken <= 0;
+                end
+                4'b0110: begin // SLTI (Set Less Than Immediate)
+                    result <= (operand_a < imm) ? 1 : 0;
+                    branch_taken <= 0;
+                end
+                4'b0111: begin // BEQ (Branch if Equal)
+                    branch_taken <= (operand_a == operand_b);
+                    result <= 0; // result not used
+                end
+                4'b1000: begin // BNE (Branch if Not Equal)
+                    branch_taken <= (operand_a != operand_b);
+                    result <= 0; // result not used
+                end
+                4'b1001: begin // JALR (Jump and Link Register)
+                    result <= operand_a + imm; // Link address for JALR
+                    branch_taken <= 1;
+                end
+                4'b1010: begin // LW (Load Word)
+                    effective_addr <= operand_a + imm; // Compute effective address
+                    result <= 0; // Data read from memory will be set externally
+                    branch_taken <= 0;
+                end
+                4'b1011: begin // SW (Store Word)
+                    effective_addr <= operand_a + imm; // Compute effective address
+                    result <= operand_b; // Data to be stored (to be sent to memory)
+                    branch_taken <= 0;
+                end
+                4'b1100: begin // ADDI (Add Immediate)
+                    result <= operand_a + imm; // Add immediate value
+                    branch_taken <= 0;
+                end
+                4'b1101: begin // ANDI (AND Immediate)
+                    result <= operand_a & imm; // Bitwise AND with immediate
+                    branch_taken <= 0;
+                end
+                4'b1110: begin // ORI (OR Immediate)
+                    result <= operand_a | imm; // Bitwise OR with immediate
+                    branch_taken <= 0;
+                end
+                4'b1111: begin // XORI (XOR Immediate)
+                    result <= operand_a ^ imm; // Bitwise XOR with immediate
+                    branch_taken <= 0;
+                end
+                default: begin
+                    result <= 0;
+                    branch_taken <= 0;
+                    effective_addr <= 0; // Reset effective address
+                end
+            endcase
+            
+            // Handle immediate operations if use_imm is set
+            if (use_imm) begin
+                // The operations already utilize `imm` in the relevant cases
+            end
+        end
+    end
+endmodule

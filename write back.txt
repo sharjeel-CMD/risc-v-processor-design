@@ -1,0 +1,24 @@
+module write_back_unit (
+    input wire clk,
+    input wire rst,
+    input wire [4:0] rd_addr,        // Destination register address
+    input wire [31:0] alu_result,    // Result from ALU
+    input wire [31:0] mem_data,      // Data read from memory
+    input wire mem_to_reg,           // Control signal to choose source
+    output reg [31:0] wb_data         // Data to write back to register
+);
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            wb_data <= 32'b0; // Reset wb_data to zero
+        end else begin
+            // Choose between ALU result and memory data
+            if (mem_to_reg) begin
+                wb_data <= mem_data; // Choose memory data
+            end else begin
+                wb_data <= alu_result; // Choose ALU result
+            end
+        end
+    end
+
+endmodule

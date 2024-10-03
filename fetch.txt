@@ -1,0 +1,43 @@
+module fetch_unit #(
+    parameter xlen = 32  // Parameter to define the width of the instructions (default is 32 bits)
+)(
+    input clk,                 // Clock input (positive edge)
+    input wire reset_n,       // Active low reset (synchronous)
+    input wire [xlen-1:0] next_instruction, // Instruction received from memory
+    input wire branch_taken,   // Signal indicating if a branch is taken
+    output reg [xlen-1:0] current_instruction, // Instruction to decode unit
+    output reg [xlen-1:0] next_pc, // Next PC for instruction memory
+    output reg [xlen-1:0] current_pc // Current PC to decode unit
+);
+
+    reg [xlen-1:0] pc; // Program counter
+
+    // Update logic on clock edge
+    always @(posedge clk) begin
+        if (!reset_n) begin
+            // On reset, initialize the program counter
+            pc <= 32'b0; // Set to start address; 
+            current_instruction <= 32'b0;
+            current_pc <= 32'b0;
+            next_pc <= 32'b0;
+        end else begin
+            // Update current instruction and PC
+            current_instruction <= next_instruction; // Fetch the instruction
+            current_pc <= pc; // Store current PC
+            
+            // Compute the next PC
+            if (branch_taken) begin
+                // If a branch is taken, set the next PC to a branch target
+                // Assuming next_instruction is the target address 
+              next_pc <= current_instruction[31:20]; 
+            end else begin
+                // Otherwise, increment the PC for sequential execution
+                next_pc <= pc + 4; // Adjust for instruction width (4 bytes for RISC-V)
+            end
+            
+            // Update the PC for the next cycle
+            pc <= next_pc;
+        end
+    end
+
+endmodule

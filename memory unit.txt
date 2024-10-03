@@ -1,0 +1,32 @@
+// Code your design here
+`timescale 1ns / 1ps
+
+module MemoryUnit (
+    input wire clk,               // Clock signal
+    input wire we,                // Write Enable
+    input wire [31:0] addr,       // Address to read/write
+    input wire [31:0] writeData,  // Data to write
+    output reg [31:0] readData    // Data read from memory
+);
+    // Memory array (1KB of 32-bit words)
+    reg [31:0] memory [0:1023];
+
+    // Memory Access
+    always @(posedge clk) begin
+        if (we) begin
+            // Store word at the specified address
+            memory[addr >> 2] <= writeData; // Divide addr by 4 for word addressing
+        end
+        // Read word from the specified address
+        readData <= memory[addr >> 2]; // Always read data (even if writing)
+    end
+
+    // Optional: Initialize memory for simulation purposes
+    initial begin
+        // Initialize memory with some default values (if needed)
+        integer i;
+        for (i = 0; i < 1024; i = i + 1) begin
+            memory[i] = 32'b0; // Set all memory locations to 0
+        end
+    end
+endmodule
